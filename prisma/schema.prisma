@@ -1,0 +1,123 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                    Int              @id @default(autoincrement())
+  telegramId            String           @unique
+  firstName             String
+  lastName              String?
+  username              String?
+  languageCode          String?
+  isAdmin               Boolean?         @default(false)
+  currentBalance        Float            @default(0)
+  outputBalance         Float            @default(0)
+  payments              Payment[]
+  createdDate           DateTime         @default(now()) @db.Date
+  isBlockedTheBot       Boolean?         @default(false)
+  warningsCount         Int              @default(0)
+  dateOfLastDailyReward String?
+  invitedBy             Referral?        @relation("InvitedUsers", fields: [invitedById], references: [id])
+  invitedById           Int?
+  referral              Referral?        @relation("ReferralOwner")
+  sponsorChannels       SponsorChannel[] @relation("SubsUsers")
+}
+
+model Payment {
+  id          Int            @id @default(autoincrement())
+  date        DateTime       @db.Date
+  requestDate DateTime       @default(now()) @db.Date
+  amount      Float
+  currency    String
+  status      WithdrawStatus @default(pending)
+  userId      Int
+  user        User           @relation(fields: [userId], references: [id])
+}
+
+model Mailing {
+  id          Int      @id @default(autoincrement())
+  message     String
+  photos      Photo[]
+  buttons     Button[]
+  date        String
+  isCompleted Boolean  @default(false)
+}
+
+model Photo {
+  url       String
+  type      String   @default("photo")
+  caption   String?
+  mailing   Mailing? @relation(fields: [mailingId], references: [id])
+  mailingId Int      @unique
+}
+
+model Button {
+  type      ButtonType
+  text      String
+  url       String
+  mailing   Mailing?   @relation(fields: [mailingId], references: [id])
+  mailingId Int        @unique
+}
+
+model Referral {
+  id           Int    @id @default(autoincrement())
+  code         String @unique
+  owner        User   @relation("ReferralOwner", fields: [ownerId], references: [id])
+  ownerId      Int    @unique
+  invitedUsers User[] @relation("InvitedUsers")
+}
+
+model Promocode {
+  id         Int     @id @default(autoincrement())
+  promo      String  @unique
+  amount     Float
+  currency   String
+  usageLimit Int
+  usageCount Int     @default(0)
+  isActive   Boolean @default(true)
+}
+
+model SponsorChannel {
+  id             Int                @id @default(autoincrement())
+  channelName    String
+  channelLink    String
+  channelSlug    String             @unique
+  isActive       Boolean            @default(true)
+  createdDate    DateTime           @default(now()) @db.Date
+  expirationDate DateTime           @db.Date
+  sponsorName    String
+  sponsorLink    String
+  reward         Float
+  type           SponsorChannelType
+  subsUsers      User[]             @relation("SubsUsers")
+}
+
+model Contact {
+  id          Int      @id @default(autoincrement())
+  contactName String
+  contactLink String
+  isActive    Boolean  @default(true)
+  createdDate DateTime @default(now()) @db.Date
+}
+
+enum WithdrawStatus {
+  pending
+  success
+  failed
+}
+
+enum SponsorChannelType {
+  start
+  task
+  all
+}
+
+enum ButtonType {
+  callback
+  url
+}
